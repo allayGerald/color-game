@@ -40,14 +40,20 @@
             class="px-6 py-2 my-6 bg-green-500 hover:bg-green-600 text-2xl text-white font-semibold uppercase rounded-md">
         play
     </button>
+    
+    <div class="fixed left-0 top-0 ml-8 mt-4 flex space-x-4 items-center" x-show="getHighestScore() != null">
+        <h4 class="text-lg uppercase">highest score</h4>
+        <div class="h-10 w-10 rounded-full bg-green-200 flex flex-col items-center justify-center"><p class="text-lg text-green-700 font-semibold" x-text="getHighestScore()"></p></div>
+    </div>
 
     <div
             x-cloak
             class="relative w-full bg-gray-200">
         <div
+                id="progress"
                 class="absolute inset-0 bg-red-500 h-2 w-0"
                 :class="{'progress': playing}"
-                :style="`animation-duration:${timerLimit * 1000}ms;`">
+                :style="`animation-duration:${animationDuration};`">
         </div>
     </div>
 
@@ -106,8 +112,8 @@
             <button
                     type="button"
                     x-text="card.displayColor"
-                    class="flex items-center justify-center w-24 h-24 text-white uppercase tracking-wide font-semibold"
-                    :class="[ `bg-${card.actualColor}-500 ${levelAnimation}` ]"
+                    class="flex items-center justify-center w-24 h-24 text-white uppercase tracking-wide font-semibold transition duration-700 ease-in-out"
+                    :class="[ `bg-${card.actualColor}-500` ]"
                     @click="select(card)"
             ></button>
         </template>
@@ -125,16 +131,21 @@
     return {
       intervalId: null,
       timerLimit: 10,
-      timer: 1,
+      timer: 0,
       showToast: false,
       colors: ['gray', 'red', 'yellow', 'green', 'blue', 'indigo', 'purple', 'pink'],
       cards: [],
       cardQuantity: 25,
       playing: false,
       score: 0,
+     get animationDuration(){
+        return `${this.timerLimit * 1000}ms`
+     },
 
       changeColors () {
+        this.showCards = false
         let color = this.randomColor()
+        console.log(color)
         let correctColor = {
           actualColor: color,
           displayColor: color
@@ -150,6 +161,7 @@
           .push(correctColor)
           .shuffle()
           .all()
+        this.showCards = true
         console.log(this.cards)
       },
 
@@ -163,7 +175,7 @@
 
         this.changeColors()
 
-        this.timer = 1
+        this.timer = 0
         this.intervalId = setInterval(() => {
           (this.timer === this.timerLimit) ? this.gameOver() : this.timer++
         }, 1000)
@@ -172,11 +184,11 @@
       },
 
       get displayTimer () {
-        return this.timerLimit - this.timer + 1
+        return this.timerLimit - this.timer
       },
 
       get displayScore () {
-        return this.score * 10
+        return this.score
       },
 
       get level () {
@@ -188,20 +200,26 @@
       },
 
       select(card) {
-        console.log(card)
         if (! this.playing) {
-          console.log('not')
           return
         }
-        console.log('hapa')
+
         if (card.displayColor === card.actualColor) {
-          console.log('correct')
-          this.timer = 1
-          this.score++
+          this.score+= this.displayTimer
+          this.restartAnimation()
           this.changeColors()
         }
       },
-
+      restartAnimation() {
+        let p = document.getElementById('progress')
+        this.playing = false
+        p.classList.remove('progress')
+        void p.offsetWidth;
+        p.classList.add('progress')
+        this.playing = true
+        this.timer = 0
+        p.classList.add('progress')
+      },
       get levelAnimation() {
         switch (+this.level) {
           case 0:
@@ -218,6 +236,7 @@
       },
 
       gameOver () {
+        this.setHighestScore()
         this.playing = false
         clearInterval(this.intervalId)
        /* if (confirm(`Game Over. Your score is ${this.displayScore}. Want to restart?`)) {
@@ -226,7 +245,17 @@
 
         this.showToast = true
       },
+      setHighestScore(){
+        let highestScore = this.getHighestScore()
+        console.log(highestScore)
+        if (!highestScore || (+highestScore < this.displayScore)){
+          sessionStorage.setItem('highestScore', (`${this.displayScore}`))
+        }
+      },
 
+      getHighestScore() {
+        return sessionStorage.getItem('highestScore')
+      },
       restart() {
         this.showToast = false
         this.start()
